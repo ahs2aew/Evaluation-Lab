@@ -1,0 +1,48 @@
+---
+title: "Evaluation-Lab"
+author: "Anna Stein"
+date: "10/27/2021"
+output: html_document
+---
+```{r}
+# load in needed packages
+library(tidyverse)
+library(caret)
+library(RColorBrewer)
+library(ROCR)
+#install.packages("MLmetrics")
+library(MLmetrics)
+```
+
+```{r}
+# read in data
+music_data = read.csv("/Users/Anna/Downloads/data.csv")
+```
+
+
+```{r}
+# taking out NAs
+table(is.na(music_data)) # from this, it seems that there aren't NAs in this dataframe 
+music_data <- music_data[complete.cases(music_data), ] # take out rows that contain NAs
+View(music_data) # looks like that didn't make a difference
+
+
+# taking out unecessary columns: column titled 'X', column titled 'target'
+music_data = music_data[,-c(1,15)] # don't run this more than once 
+View(music_data)
+
+
+# check variable classes, and change if necessary: 
+str(music_data)
+# classes seem to be correct, don't need changing
+
+
+# normalize numeric variables 
+# building a normalizer: 
+normalize <- function(x){
+ (x - min(x)) / (max(x) - min(x))
+}
+
+
+```
+
