@@ -4,6 +4,11 @@ author: "Anna Stein"
 date: "10/27/2021"
 output: html_document
 ---
+
+Need to use 2 datasets. 
+
+
+
 ```{r}
 # load in needed packages
 library(tidyverse)
@@ -37,6 +42,14 @@ str(music_data)
 # classes seem to be correct, don't need changing
 
 
+numvar_inmusic = names(select_if(music_data, is.numeric))
+#View(numvar_inmusic)
+# this gives us a table with the columns that are numeric
+
+# scale the numeric variables
+music_data[numvar_inmusic] = lapply(music_data[numvar_inmusic], scale)
+
+
 # normalize numeric variables 
 # building a normalizer: 
 normalize <- function(x){
@@ -44,5 +57,40 @@ normalize <- function(x){
 }
 
 
+
+music_data[numvar_inmusic] = lapply(music_data[numvar_inmusic], normalize)
+View(music_data)
+# now, all numeric variables are normalized 
 ```
+
+Need to define a question that can be answered using kNN. 
+we could have different categories of danceability -- low danceability, medium, and high. 
+then, the kNN model would classify whether a song is low, medium, or high in terms of danceability. 
+We could also use binary classification -- low or high danceability. 
+
+
+Split up dataframe into Training and Testing:  
+```{r}
+#music_data has 2,017 rows 
+# we want to take 80% of these rows (so, eventually, 80% of the dataframe) and put them into our Training set
+# the remaining 20% of rows will be for Testing 
+
+
+set.seed(200)
+music_data_train_rows = sample(1:nrow(music_data), # look at all the rows in music_data
+                              round(0.8 * nrow(music_data), 0),  #<- multiply the 
+                                                                #   number of rows
+                                                                #   by 0.8 and round
+                                                                #   the decimals
+                              replace = FALSE)#<- don't replace the numbers
+
+View(music_data_train_rows)
+
+music_data_train = music_data[music_data_train_rows, ] # select all columns, and 80% of the rows 
+
+# now we need our testing set: 
+music_data_test = music_data[-music_data_train_rows, ] # all columns, and the rows that weren't selected as part of the training data
+View(music_data_test) # we have 20% of the original dataframe here
+```
+
 
