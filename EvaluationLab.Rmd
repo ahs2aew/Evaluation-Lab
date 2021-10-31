@@ -11,12 +11,14 @@ Need to use 2 datasets.
 
 ```{r}
 # load in needed packages
+install.packages("class")  
 library(tidyverse)
 library(caret)
 library(RColorBrewer)
 library(ROCR)
 #install.packages("MLmetrics")
 library(MLmetrics)
+library(class)
 ```
 
 ```{r}
@@ -40,6 +42,10 @@ View(music_data)
 # check variable classes, and change if necessary: 
 str(music_data)
 # classes seem to be correct, don't need changing
+
+class(music_data$time_signature)
+music_data$time_signature = as.character(music_data$time_signature)
+class(music_data$time_signature)
 
 
 numvar_inmusic = names(select_if(music_data, is.numeric))
@@ -91,6 +97,34 @@ music_data_train = music_data[music_data_train_rows, ] # select all columns, and
 # now we need our testing set: 
 music_data_test = music_data[-music_data_train_rows, ] # all columns, and the rows that weren't selected as part of the training data
 View(music_data_test) # we have 20% of the original dataframe here
+```
+
+
+
+Need to make danceability into a binary variable? 
+```{r}
+# need to cut at a certain value for danceability
+fivenum(music_data$danceability)
+# the median is around 0.6 for danceability, so lets cut there. if danceability is above a 0.6, the song is highly danceable. Otherwise, the song has a low level of danceability. 
+music_data$danceability <- cut(music_data$danceability,c(-1,0.6,1),labels = c(0,1))
+View(music_data)
+# now we have danceability as a binary variable 
+```
+
+
+
+
+
+Training the classifer: 
+```{r}
+set.seed(200)
+music_7NN<-  knn(train = music_data_train[, c("acousticness", "energy", "instrumentalness","liveliness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
+               test = music_data_test[, c("acousticness", "energy", "instrumentalness","liveliness","tempo")],    #<- test set cases
+               cl = music_data_train[, "danceability"],#<- category for true classification # this would be danceability????
+               k = 7,#<- number of neighbors considered
+               use.all = TRUE,
+               prob = TRUE) #<- control ties between class assignments If true, all distances equal to the kth largest are included
+
 ```
 
 
