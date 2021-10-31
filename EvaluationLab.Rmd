@@ -23,7 +23,7 @@ library(class)
 
 ```{r}
 # read in data
-music_data = read.csv("/Users/Anna/Downloads/data.csv")
+music_data = read.csv("/Users/aishgav/Desktop/ds3001/DS3001/Evaluation-Lab/data.csv")
 ```
 
 
@@ -67,6 +67,9 @@ normalize <- function(x){
 music_data[numvar_inmusic] = lapply(music_data[numvar_inmusic], normalize)
 View(music_data)
 # now, all numeric variables are normalized 
+```
+```{r}
+table(music_data['danceability'])
 ```
 
 Need to define a question that can be answered using kNN. 
@@ -113,13 +116,11 @@ View(music_data)
 
 
 
-
-
 Training the classifer: 
 ```{r}
 set.seed(200)
-music_7NN<-  knn(train = music_data_train[, c("acousticness", "energy", "instrumentalness","liveliness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
-               test = music_data_test[, c("acousticness", "energy", "instrumentalness","liveliness","tempo")],    #<- test set cases
+music_7NN<-  knn(train = music_data_train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
+               test = music_data_test[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],    #<- test set cases
                cl = music_data_train[, "danceability"],#<- category for true classification # this would be danceability????
                k = 7,#<- number of neighbors considered
                use.all = TRUE,
@@ -127,4 +128,33 @@ music_7NN<-  knn(train = music_data_train[, c("acousticness", "energy", "instrum
 
 ```
 
+Output of training classifier 
+```{r}
+#str(music_7NN)
+#table(music_7NN)
+length(music_7NN)
 
+```
+
+```{r}
+kNN_res = table(music_7NN,
+                music_data_test$danceability)
+#kNN_res
+sum(kNN_res)
+
+```
+
+
+```{r}
+#selecting true negatives and true positives 
+kNN_res[row(kNN_res) == col(kNN_res)]
+
+#accuracy
+kNN_acc = sum(kNN_res[row(kNN_res) == col(kNN_res)]) / sum(kNN_res)
+kNN_acc
+```
+
+
+```{r}
+music_eval <-(predict(music_7NN,newdata = music_data_test))
+```
