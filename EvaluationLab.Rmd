@@ -20,7 +20,8 @@ library(class)
 
 ```{r}
 # read in data
-music_data = read.csv("/Users/aishgav/Desktop/ds3001/DS3001/Evaluation-Lab/data.csv")
+music_data = read.csv("/Users/Anna/Downloads/data.csv")
+View(music_data)
 ```
 
 
@@ -77,18 +78,19 @@ View(music_data)
 ```
 
 
-Need to define a question that can be answered using kNN. 
-we could have different categories of danceability -- low danceability, medium, and high. 
-then, the kNN model would classify whether a song is low, medium, or high in terms of danceability. 
-We could also use binary classification -- low or high danceability. 
+Finding baseline/prevalence: 
+```{r}
+(prevalence <- table(music_data$danceability)[[2]]/length(music_data$danceability))
+```
+Our prevalence is 0.4759544. This will be useful later, in relation to some of our evaluation metrics. 
 
+
+Question we want to answer with kNN: Can we classify songs based on their danceability (i.e. is the song low-ly or highly danceable?)
 
 
 
 Splitting data into train, tune, and test: 
 ```{r}
-
-
 # This means that at random, we have an 11.6% chance of correctly picking
 # out a subscribed individual. Let's see if kNN can do any better.
 # i don't think this is meant to be here??^idk
@@ -123,6 +125,8 @@ dim(test)
 
 
 
+
+
 Training the classifer: 
 ```{r}
 set.seed(200)
@@ -132,7 +136,6 @@ music_7NN<-  knn(train = train[, c("acousticness", "energy", "instrumentalness",
                k = 7,#<- number of neighbors considered
                use.all = TRUE,
                prob = TRUE) #<- control ties between class assignments If true, all distances equal to the kth largest are included
-
 ```
 
 Output of training classifier 
@@ -141,6 +144,9 @@ str(music_7NN)
 #table(music_7NN)
 #length(music_7NN)
 ```
+This gives us a list of probabilities. 
+
+
 
 ```{r}
 kNN_res = table(music_7NN,
@@ -158,6 +164,7 @@ kNN_res[row(kNN_res) == col(kNN_res)]
 kNN_acc = sum(kNN_res[row(kNN_res) == col(kNN_res)]) / sum(kNN_res)
 kNN_acc
 ```
+The accuracy here (with k=7) is about 0.623. 
 
 ```{r}
 confusionMatrix(as.factor(music_7NN), as.factor(tune$danceability), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
@@ -210,9 +217,7 @@ knn_different_k = sapply(seq(1, 21, by = 2),  #<- set k to be odd number from 1 
 
 
 
-#A bit more of a explanation...
-seq(1,21, by=2)#just creates a series of numbers
-sapply(seq(1, 21, by=2), function(x) x+1)#sapply returns a new vector using the series of numbers and some calculation that is repeated over the vector of numbers 
+
 
 
 # Reformating the results to graph
@@ -235,7 +240,6 @@ ggplot(knn_different_k,
 Run with optimal k: k = 5
 
 ```{r}
-
 set.seed(200)
 music_5NN<-  knn(train = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
                test = tune[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],    #<- test set cases
@@ -245,7 +249,6 @@ music_5NN<-  knn(train = train[, c("acousticness", "energy", "instrumentalness",
                prob = TRUE) #<- control ties between class assignments If true, all distances equal to the kth largest are included
 
 str(music_5NN)
-
 ```
 
 ```{r}
