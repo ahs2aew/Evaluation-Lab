@@ -68,9 +68,17 @@ music_data[numvar_inmusic] = lapply(music_data[numvar_inmusic], normalize)
 View(music_data)
 # now, all numeric variables are normalized 
 ```
+
+Need to make danceability into a binary variable? 
 ```{r}
-table(music_data['danceability'])
+# need to cut at a certain value for danceability
+fivenum(music_data$danceability)
+# the median is around 0.6 for danceability, so lets cut there. if danceability is above a 0.6, the song is highly danceable. Otherwise, the song has a low level of danceability. 
+music_data$danceability <- cut(music_data$danceability,c(-1,0.6,1),labels = c(0,1))
+View(music_data)
+# now we have danceability as a binary variable 
 ```
+
 
 Need to define a question that can be answered using kNN. 
 we could have different categories of danceability -- low danceability, medium, and high. 
@@ -102,26 +110,52 @@ music_data_test = music_data[-music_data_train_rows, ] # all columns, and the ro
 View(music_data_test) # we have 20% of the original dataframe here
 ```
 
-
-
-Need to make danceability into a binary variable? 
 ```{r}
-# need to cut at a certain value for danceability
-fivenum(music_data$danceability)
-# the median is around 0.6 for danceability, so lets cut there. if danceability is above a 0.6, the song is highly danceable. Otherwise, the song has a low level of danceability. 
-music_data$danceability <- cut(music_data$danceability,c(-1,0.6,1),labels = c(0,1))
-View(music_data)
-# now we have danceability as a binary variable 
+
+
+# This means that at random, we have an 11.6% chance of correctly picking
+# out a subscribed individual. Let's see if kNN can do any better.
+
+
+
+part_index_1 <- createDataPartition(music_data$danceability,
+                                           times=1,
+                                           p = 0.70,
+                                           groups=1,
+                                           list=FALSE)
+View(part_index_1)
+
+train <- music_data[part_index_1,]
+tune_and_test <- music_data[-part_index_1, ]
+
+#The we need to use the function again to create the tuning set 
+
+tune_and_test_index <- createDataPartition(tune_and_test$danceability,
+                                           p = .5,
+                                           list = FALSE,
+                                           times = 1)
+
+tune <- tune_and_test[tune_and_test_index, ]
+test <- tune_and_test[-tune_and_test_index, ]
+
+dim(train)
+dim(tune)
+dim(test)
+
+
+
 ```
+
+
 
 
 
 Training the classifer: 
 ```{r}
 set.seed(200)
-music_7NN<-  knn(train = music_data_train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
-               test = music_data_test[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],    #<- test set cases
-               cl = music_data_train[, "danceability"],#<- category for true classification # this would be danceability????
+music_7NN<-  knn(train = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
+               test = tune[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],    #<- test set cases
+               cl = train[, "danceability"],#<- category for true classification # this would be danceability????
                k = 7,#<- number of neighbors considered
                use.all = TRUE,
                prob = TRUE) #<- control ties between class assignments If true, all distances equal to the kth largest are included
@@ -130,15 +164,15 @@ music_7NN<-  knn(train = music_data_train[, c("acousticness", "energy", "instrum
 
 Output of training classifier 
 ```{r}
-#str(music_7NN)
+str(music_7NN)
 #table(music_7NN)
-length(music_7NN)
+#length(music_7NN)
 
 ```
 
 ```{r}
 kNN_res = table(music_7NN,
-                music_data_test$danceability)
+                tune$danceability)
 #kNN_res
 sum(kNN_res)
 
@@ -154,7 +188,101 @@ kNN_acc = sum(kNN_res[row(kNN_res) == col(kNN_res)]) / sum(kNN_res)
 kNN_acc
 ```
 
+```{r}
+confusionMatrix(as.factor(music_7NN), as.factor(tune$danceability), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
+```
+Change k for higher accuracy
 
 ```{r}
-music_eval <-(predict(music_7NN,newdata = music_data_test))
+# How does "k" affect classification accuracy? Let's create a function
+# to calculate classification accuracy based on the number of "k."
+chooseK = function(k, train_set, val_set, train_class, val_class){
+  
+  # Build knn with k neighbors considered.
+  set.seed(1)
+  class_knn = knn(train = train_set,    #<- training set cases
+                  test = val_set,       #<- test set cases
+                  cl = train_class,     #<- category for classification
+                  k = k,                #<- number of neighbors considered
+                  use.all = TRUE)       #<- control ties between class assignments
+                                        #   If true, all distances equal to the kth 
+                                        #   largest are included
+  conf_mat = table(class_knn, val_class)
+  
+  # Calculate the accuracy.
+  accu = sum(conf_mat[row(conf_mat) == col(conf_mat)]) / sum(conf_mat)                         
+  cbind(k = k, accuracy = accu)
+}
+
+```
+
+
+
+```{r}
+# The sapply() function plugs in several values into our chooseK function.
+#sapply(x, fun...) "fun" here is passing a function to our k-function
+# function(x)[function] allows you to apply a series of numbers
+# to a function without running a for() loop! Returns a matrix.
+knn_different_k = sapply(seq(1, 21, by = 2),  #<- set k to be odd number from 1 to 21
+                         function(x) chooseK(x, 
+                          train_set = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],
+                          val_set = tune[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],
+                          train_class = train$danceability,
+                          val_class = tune$danceability))
+
+
+
+#A bit more of a explanation...
+seq(1,21, by=2)#just creates a series of numbers
+sapply(seq(1, 21, by=2), function(x) x+1)#sapply returns a new vector using the series of numbers and some calculation that is repeated over the vector of numbers 
+
+
+# Reformating the results to graph
+View(knn_different_k)
+class(knn_different_k)#matrix 
+head(knn_different_k)
+
+knn_different_k = data.frame(k = knn_different_k[1,],
+                             accuracy = knn_different_k[2,])
+
+# Plot accuracy vs. k.
+
+ggplot(knn_different_k,
+       aes(x = k, y = accuracy)) +
+  geom_line(color = "orange", size = 1.5) +
+  geom_point(size = 3)
+```
+
+
+Run with optimal k: k = 5
+
+```{r}
+
+set.seed(200)
+music_5NN<-  knn(train = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
+               test = tune[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],    #<- test set cases
+               cl = train[, "danceability"],#<- category for true classification # this would be danceability????
+               k = 45,#<- number of neighbors considered
+               use.all = TRUE,
+               prob = TRUE) #<- control ties between class assignments If true, all distances equal to the kth largest are included
+
+str(music_5NN)
+
+```
+
+```{r}
+kNN_res_5 = table(music_7NN,
+                tune$danceability)
+#kNN_res
+sum(kNN_res_5)
+
+kNN_res[row(kNN_res) == col(kNN_res)]
+
+#accuracy
+kNN_acc_5 = sum(kNN_res_5[row(kNN_res_5) == col(kNN_res_5)]) / sum(kNN_res_5)
+kNN_acc_5
+```
+
+
+```{r}
 ```
