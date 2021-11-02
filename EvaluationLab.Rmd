@@ -1,12 +1,11 @@
 ---
 title: "Evaluation-Lab"
-author: "Anna Stein"
+author: "Aishwarya Gavili, Anna Stein, Tatev Gomtsyan"
 date: "10/27/2021"
 output: html_document
 ---
 
 Need to use 2 datasets. 
-
 
 
 ```{r}
@@ -85,30 +84,6 @@ we could have different categories of danceability -- low danceability, medium, 
 then, the kNN model would classify whether a song is low, medium, or high in terms of danceability. 
 We could also use binary classification -- low or high danceability. 
 
-
-Split up dataframe into Training and Testing:  
-```{r}
-#music_data has 2,017 rows 
-# we want to take 80% of these rows (so, eventually, 80% of the dataframe) and put them into our Training set
-# the remaining 20% of rows will be for Testing 
-
-
-set.seed(200)
-music_data_train_rows = sample(1:nrow(music_data), # look at all the rows in music_data
-                              round(0.8 * nrow(music_data), 0),  #<- multiply the 
-                                                                #   number of rows
-                                                                #   by 0.8 and round
-                                                                #   the decimals
-                              replace = FALSE)#<- don't replace the numbers
-
-View(music_data_train_rows)
-
-music_data_train = music_data[music_data_train_rows, ] # select all columns, and 80% of the rows 
-
-# now we need our testing set: 
-music_data_test = music_data[-music_data_train_rows, ] # all columns, and the rows that weren't selected as part of the training data
-View(music_data_test) # we have 20% of the original dataframe here
-```
 
 ```{r}
 
@@ -199,7 +174,7 @@ Change k for higher accuracy
 chooseK = function(k, train_set, val_set, train_class, val_class){
   
   # Build knn with k neighbors considered.
-  set.seed(1)
+  set.seed(200)
   class_knn = knn(train = train_set,    #<- training set cases
                   test = val_set,       #<- test set cases
                   cl = train_class,     #<- category for classification
@@ -223,6 +198,7 @@ chooseK = function(k, train_set, val_set, train_class, val_class){
 #sapply(x, fun...) "fun" here is passing a function to our k-function
 # function(x)[function] allows you to apply a series of numbers
 # to a function without running a for() loop! Returns a matrix.
+set.seed(200)
 knn_different_k = sapply(seq(1, 21, by = 2),  #<- set k to be odd number from 1 to 21
                          function(x) chooseK(x, 
                           train_set = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],
@@ -254,35 +230,86 @@ ggplot(knn_different_k,
 ```
 
 
-Run with optimal k: k = 5
+Run with optimal k: k = 17
 
 ```{r}
 
 set.seed(200)
-music_5NN<-  knn(train = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
+music_17NN<-  knn(train = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
                test = tune[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],    #<- test set cases
                cl = train[, "danceability"],#<- category for true classification # this would be danceability????
-               k = 45,#<- number of neighbors considered
+               k = 17,#<- number of neighbors considered
                use.all = TRUE,
                prob = TRUE) #<- control ties between class assignments If true, all distances equal to the kth largest are included
 
-str(music_5NN)
+str(music_17NN)
 
 ```
 
 ```{r}
-kNN_res_5 = table(music_7NN,
+kNN_res_17 = table(music_17NN,
                 tune$danceability)
 #kNN_res
-sum(kNN_res_5)
+sum(kNN_res_17)
 
-kNN_res[row(kNN_res) == col(kNN_res)]
+kNN_res_17[row(kNN_res_17) == col(kNN_res_17)]
 
 #accuracy
-kNN_acc_5 = sum(kNN_res_5[row(kNN_res_5) == col(kNN_res_5)]) / sum(kNN_res_5)
-kNN_acc_5
+kNN_acc_17 = sum(kNN_res_17[row(kNN_res_17) == col(kNN_res_17)]) / sum(kNN_res_17)
+kNN_acc_17
+```
+
+```{r}
+confusionMatrix(as.factor(music_17NN), as.factor(tune$danceability), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
+```
+Kappa = 0.3912 
+Accuracy = 0.6931 
+
+```{r}
+tpr_17 <- 114/(114+30) #TP/TP+FN
+fpr_17 <- 63/(63+96) #FP/FP+TN
+```
+
+TPR = .7917 or 79.17%
+FPR = .3962 or 39.62%
+
+```{r}
+#F1 score computed using formula
+
+f1_17NN <- (2 * tpr_17 * fpr_17)/(tpr_17 + fpr_17)
+```
+
+```{r}
+#example code from brian - should be able to take out
+#bank_3NN$pos_prec <- ifelse(bank_3NN$pred == 0, 1-bank_3NN$bank_prob, bank_3NN$bank_prob)
 ```
 
 
 ```{r}
+#creating dataframe to help pass in parameters for metrics 
+predicted_prob_17NN <- attributes(music_17NN)$prob #predicted probabilities for each class
+
+pred_label_17NN <- head(music_17NN, n = 303) #predicted labels (0 or 1)
+
+target_7NN <- tune$danceability #actual labels 
+```
+
+```{r}
+df_17NN <- data.frame(pred_label_17NN, predicted_prob_17NN, target_7NN) 
+df_17NN$pos_prec <- ifelse(df_17NN$pred_label_17NN == 0, 1-df_17NN$predicted_prob_17NN, df_17NN$predicted_prob_17NN) #predicted positive class probabilities
+```
+
+LogLoss
+```{r}
+LogLoss(as.numeric(df_17NN$ predicted_prob_17NN), as.numeric(df_17NN$target_7NN))
+```
+
+ROC 
+```{r}
+```
+
+F1 Score
+```{r}
+#needs to be done using function
+#F1_Score(y_pred = df_17NN$pred_label_17NN == 0, y_true = df_17NN$target_7NN, positive = "1")
 ```
