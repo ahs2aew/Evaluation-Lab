@@ -5,9 +5,6 @@ date: "10/27/2021"
 output: html_document
 ---
 
-Need to use 2 datasets. 
-
-
 
 ```{r}
 # load in needed packages
@@ -69,7 +66,7 @@ View(music_data)
 # now, all numeric variables are normalized 
 ```
 
-Need to make danceability into a binary variable? 
+Need to make danceability into a binary variable: 
 ```{r}
 # need to cut at a certain value for danceability
 fivenum(music_data$danceability)
@@ -86,36 +83,15 @@ then, the kNN model would classify whether a song is low, medium, or high in ter
 We could also use binary classification -- low or high danceability. 
 
 
-Split up dataframe into Training and Testing:  
-```{r}
-#music_data has 2,017 rows 
-# we want to take 80% of these rows (so, eventually, 80% of the dataframe) and put them into our Training set
-# the remaining 20% of rows will be for Testing 
 
 
-set.seed(200)
-music_data_train_rows = sample(1:nrow(music_data), # look at all the rows in music_data
-                              round(0.8 * nrow(music_data), 0),  #<- multiply the 
-                                                                #   number of rows
-                                                                #   by 0.8 and round
-                                                                #   the decimals
-                              replace = FALSE)#<- don't replace the numbers
-
-View(music_data_train_rows)
-
-music_data_train = music_data[music_data_train_rows, ] # select all columns, and 80% of the rows 
-
-# now we need our testing set: 
-music_data_test = music_data[-music_data_train_rows, ] # all columns, and the rows that weren't selected as part of the training data
-View(music_data_test) # we have 20% of the original dataframe here
-```
-
+Splitting data into train, tune, and test: 
 ```{r}
 
 
 # This means that at random, we have an 11.6% chance of correctly picking
 # out a subscribed individual. Let's see if kNN can do any better.
-
+# i don't think this is meant to be here??^idk
 
 
 part_index_1 <- createDataPartition(music_data$danceability,
@@ -141,9 +117,6 @@ test <- tune_and_test[-tune_and_test_index, ]
 dim(train)
 dim(tune)
 dim(test)
-
-
-
 ```
 
 
@@ -167,7 +140,6 @@ Output of training classifier
 str(music_7NN)
 #table(music_7NN)
 #length(music_7NN)
-
 ```
 
 ```{r}
@@ -175,7 +147,6 @@ kNN_res = table(music_7NN,
                 tune$danceability)
 #kNN_res
 sum(kNN_res)
-
 ```
 
 
@@ -191,12 +162,14 @@ kNN_acc
 ```{r}
 confusionMatrix(as.factor(music_7NN), as.factor(tune$danceability), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
 ```
-Change k for higher accuracy
+We want to change k for higher accuracy. 
 
 ```{r}
 # How does "k" affect classification accuracy? Let's create a function
 # to calculate classification accuracy based on the number of "k."
-chooseK = function(k, train_set, val_set, train_class, val_class){
+# chooseK is our function
+
+chooseK = function(k, train_set, val_set, train_class, val_class){  
   
   # Build knn with k neighbors considered.
   set.seed(1)
@@ -214,6 +187,7 @@ chooseK = function(k, train_set, val_set, train_class, val_class){
   cbind(k = k, accuracy = accu)
 }
 
+# this function performs knn for different numbers of neighbors, then calculates the accuracy associated with that number of neigbors (k)
 ```
 
 
@@ -223,8 +197,12 @@ chooseK = function(k, train_set, val_set, train_class, val_class){
 #sapply(x, fun...) "fun" here is passing a function to our k-function
 # function(x)[function] allows you to apply a series of numbers
 # to a function without running a for() loop! Returns a matrix.
+
+
+
+
 knn_different_k = sapply(seq(1, 21, by = 2),  #<- set k to be odd number from 1 to 21
-                         function(x) chooseK(x, 
+                         function(x) chooseK(x, # the function that we're using with each value of k
                           train_set = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],
                           val_set = tune[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],
                           train_class = train$danceability,
