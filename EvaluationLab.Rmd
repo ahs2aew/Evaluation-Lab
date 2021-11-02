@@ -262,7 +262,7 @@ set.seed(200)
 music_5NN<-  knn(train = train[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],#<- training set cases # the variables we want to look at OTHER than danceability (i'm pretty sure)
                test = tune[, c("acousticness", "energy", "instrumentalness","liveness","tempo")],    #<- test set cases
                cl = train[, "danceability"],#<- category for true classification # this would be danceability????
-               k = 45,#<- number of neighbors considered
+               k = 5,#<- number of neighbors considered
                use.all = TRUE,
                prob = TRUE) #<- control ties between class assignments If true, all distances equal to the kth largest are included
 
@@ -271,7 +271,7 @@ str(music_5NN)
 ```
 
 ```{r}
-kNN_res_5 = table(music_7NN,
+kNN_res_5 = table(music_5NN,
                 tune$danceability)
 #kNN_res
 sum(kNN_res_5)
@@ -281,8 +281,4 @@ kNN_res[row(kNN_res) == col(kNN_res)]
 #accuracy
 kNN_acc_5 = sum(kNN_res_5[row(kNN_res_5) == col(kNN_res_5)]) / sum(kNN_res_5)
 kNN_acc_5
-```
-
-
-```{r}
 ```
